@@ -35,7 +35,7 @@ module.exports = {
           userName = 'Unknown User';
         }
 
-        const apiResponse = await axios.get('https://reflective-deeply-brand.glitch.me/');
+        const apiResponse = await axios.get('https://gacha-api.onrender.com/api/waifu');
         const waifuArray = apiResponse.data;
 
         let totalPossibility = 0;
