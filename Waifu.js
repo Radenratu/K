@@ -24,23 +24,6 @@ module.exports = {
         }
     },
 
-    langs: {
-        en: {
-            "pull_success": "• Selamat!: {userName}\n• Nama Karakter: {waifuName}\n• ID Karakter: {waifuid}\n• Bintang: {stars}\n• Harga: {price}",
-            "bulk_success": "# Gacha Tarik (Bulk)\n\n{bulkMessage}",
-            "sell_success_all": "Anda berhasil menjual semua item seharga {totalEarnings} won!",
-            "sell_success_single": "Anda menjual item ID {waifuid} seharga {price} won!",
-            "sell_no_cards": "Anda tidak memiliki kartu untuk dijual.",
-            "sell_no_card": "Anda tidak memiliki kartu dengan ID {waifuid}!",
-            "pull_no_money": "Anda memerlukan 20 dolar untuk menarik kartu.",
-            "bulk_no_money": "Uang tidak mencukupi untuk tarik bulk.",
-            "info_message": "# Informasi Gacha\n• Tingkat Kartu\n____________________\nR: 98%\nSR: 25%\nSSR: 2%\n____________________\n• Harga Pasar\n____________________\nR: 25€\nSR: 53€\nSSR: 60€\n____________________",
-            "inv_no_items": "Anda tidak memiliki item di halaman {page}.",
-            "show_no_card": "Tidak ada waifu dengan ID {waifuid}.",
-            "invalid_command": "Perintah tidak valid. Perintah:\n/waifu pull\n/waifu sell (cardid)/all\n/waifu info\n/waifu show (cardid)\n/waifu bulk (jumlah)\n\nLisensi lama oleh: edi nst II"
-        }
-    },
-
     onStart: async function ({ message, api, event }) {
         try {
             const [command, arg1] = message.args;
@@ -77,8 +60,8 @@ module.exports = {
 
             switch (command) {
                 case 'pull': {
-                    if ((await usersData.get(uid)).money < 20) {
-                        return message.reply(this.langs.en.pull_no_money, event.threadID);
+                    if ((await usersData.get(uid)).money < 10) {
+                        return message.reply("Anda memerlukan 10 dolar untuk menarik kartu.", event.threadID);
                     }
                     const selectedWaifu = getRandomWaifu();
                     const { waifuname: waifuName, link: img, stars, price, waifuid } = selectedWaifu;
@@ -87,15 +70,18 @@ module.exports = {
                     waifuDataArray.push({ uid, name: userName, waifuName, stars, link: img, price, waifuid, page: newPageNumber });
                     fs.writeFileSync('waifu.json', JSON.stringify(waifuDataArray), 'utf8');
                     await usersData.set(uid, { money: (await usersData.get(uid)).money - 10, data: (await usersData.get(uid)).data });
-                    return message.reply({ body: this.langs.id.pull_success.replace("{userName}", userName).replace("{waifuName}", waifuName).replace("{waifuid}", waifuid).replace("{stars}", stars).replace("{price}", price), attachment: await global.utils.getStreamFromURL(img) }, event.threadID);
+                    return message.reply({
+                        body: `• Selamat!: ${userName}\n• Nama Karakter: ${waifuName}\n• ID Karakter: ${waifuid}\n• Bintang: ${stars}\n• Harga: ${price}`,
+                        attachment: await global.utils.getStreamFromURL(img)
+                    }, event.threadID);
                 }
                 case 'bulk': {
                     const quantity = parseInt(arg1);
                     if (isNaN(quantity) || quantity < 1 || quantity > 10) {
-                        return message.reply("Tentukan jumlah antara 1 dan 10.");
+                        return message.reply("Tentukan jumlah antara 1 dan 10.", event.threadID);
                     }
                     if ((await usersData.get(uid)).money < (10 * quantity)) {
-                        return message.reply(this.langs.en.bulk_no_money, event.threadID);
+                        return message.reply("Uang tidak mencukupi untuk tarik bulk.", event.threadID);
                     }
 
                     const waifuDataArrayToAdd = [];
@@ -115,38 +101,38 @@ module.exports = {
                     waifuDataArrayToAdd.forEach(waifu => {
                         bulkMessage += `• Nama Karakter: ${waifu.waifuName}\n• ID Karakter: ${waifu.waifuid}\n• Bintang: ${waifu.stars}\n• Harga: ${waifu.price}\n\n`;
                     });
-                    return message.reply(this.langs.en.bulk_success.replace("{bulkMessage}", bulkMessage), event.threadID);
+                    return message.reply(`# Gacha Tarik (Bulk)\n\n${bulkMessage}`, event.threadID);
                 }
                 case 'sell': {
                     const cardId = arg1 === 'all' ? null : parseInt(arg1);
                     const userData = await usersData.get(uid);
                     if (!cardId) {
                         if (waifuDataArray.filter(w => w.uid === uid).length === 0) {
-                            return message.reply(this.langs.en.sell_no_cards, event.threadID);
+                            return message.reply("Anda tidak memiliki kartu untuk dijual.", event.threadID);
                         }
                         const totalEarnings = waifuDataArray.filter(w => w.uid === uid).reduce((total, w) => total + w.price, 0);
                         waifuDataArray = waifuDataArray.filter(w => w.uid !== uid);
                         fs.writeFileSync('waifu.json', JSON.stringify(waifuDataArray), 'utf8');
                         await usersData.set(uid, { money: userData.money + totalEarnings, data: userData.data });
-                        return message.reply(this.langs.en.sell_success_all.replace("{totalEarnings}", totalEarnings), event.threadID);
+                        return message.reply(`Anda berhasil menjual semua item seharga ${totalEarnings} won!`, event.threadID);
                     }
                     const cardIndex = waifuDataArray.findIndex(w => w.uid === uid && w.waifuid === cardId);
                     if (cardIndex === -1) {
-                        return message.reply(this.langs.en.sell_no_card.replace("{waifuid}", cardId), event.threadID);
+                        return message.reply(`Anda tidak memiliki kartu dengan ID ${cardId}!`, event.threadID);
                     }
                     const card = waifuDataArray.splice(cardIndex, 1)[0];
                     fs.writeFileSync('waifu.json', JSON.stringify(waifuDataArray), 'utf8');
                     await usersData.set(uid, { money: userData.money + card.price, data: userData.data });
-                    return message.reply(this.langs.en.sell_success_single.replace("{waifuid}", cardId).replace("{price}", card.price), event.threadID);
+                    return message.reply(`Anda menjual item ID ${cardId} seharga ${card.price} won!`, event.threadID);
                 }
                 case 'info': {
-                    return message.reply(this.langs.en.info_message, event.threadID);
+                    return message.reply(`# Informasi Gacha\n• Tingkat Kartu\n____________________\nR: 98%\nSR: 25%\nSSR: 2%\n____________________\n• Harga Pasar\n____________________\nR: 25€\nSR: 53€\nSSR: 60€\n____________________`, event.threadID);
                 }
-                                case 'inv': {
+                case 'inv': {
                     const page = parseInt(arg1) || 1;
                     const userCards = waifuDataArray.filter(w => w.uid === uid && w.page === page);
                     if (userCards.length === 0) {
-                        return message.reply(this.langs.en.inv_no_items.replace("{page}", page), event.threadID);
+                        return message.reply(`Anda tidak memiliki item di halaman ${page}.`, event.threadID);
                     }
                     let inventoryMessage = `# Inventaris Kartu (Halaman ${page})\n\n`;
                     userCards.forEach(card => {
@@ -158,19 +144,19 @@ module.exports = {
                     const cardId = parseInt(arg1);
                     const card = waifuDataArray.find(w => w.uid === uid && w.waifuid === cardId);
                     if (!card) {
-                        return message.reply(this.langs.en.show_no_card.replace("{waifuid}", cardId), event.threadID);
+                        return message.reply(`Tidak ada waifu dengan ID ${cardId}.`, event.threadID);
                     }
                     return message.reply({
                         body: `• Nama Karakter: ${card.waifuName}\n• ID Karakter: ${card.waifuid}\n• Bintang: ${card.stars}\n• Harga: ${card.price}`,
                         attachment: await global.utils.getStreamFromURL(card.link)
                     }, event.threadID);
                 }
-                default:
-                    return message.reply(this.langs.en.invalid_command, event.threadID);
+                            default:
+                                        return message.reply("Perintah tidak valid. Gunakan: \nwaifu pull \nwaifu sell (cardid)/all \nwaifu info \nwaifu show (cardid) \nwaifu bulk (jumlah) \nwaifu inv (halaman)", event.threadID);
             }
         } catch (error) {
-            console.error('Error:', error);
-            message.reply('Terjadi kesalahan saat memproses perintah.', event.threadID);
+            console.error('Terjadi kesalahan:', error);
+            return message.reply('Terjadi kesalahan saat memproses perintah.', event.threadID);
         }
     }
 };
